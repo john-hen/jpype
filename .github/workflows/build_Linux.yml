@@ -1,0 +1,29 @@
+﻿name: Build on Linux
+
+on: [workflow_dispatch]
+
+jobs:
+    test_build:
+
+        strategy:
+            matrix:
+                python-version: [3.9, "3.10"]
+                # "3.10" must be in quotes so YAML won't think it's 3.1.
+                # See: https://dev.to/hugovk/the-python-3-1-problem-85g
+
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Check out code.
+              uses: actions/checkout@v2
+
+            - name: Set up Python ${{ matrix.python-version }}.
+              uses: actions/setup-python@v2
+              with:
+                  python-version: ${{ matrix.python-version }}
+
+            - name: Build package.
+              run: python setup.py build
+
+            - name: Install package.
+              run: python setup.py install
