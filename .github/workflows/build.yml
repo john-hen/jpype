@@ -3,11 +3,10 @@
 on: [workflow_dispatch]
 
 jobs:
-    test_build:
-
+    build:
         strategy:
             matrix:
-                os: [windows-latest, ubuntu-latest, macos-latest]
+                os: [windows-latest, ubuntu-latest, macos-10.15]
                 python-version: [3.6, 3.7, 3.8, 3.9, "3.10"]
                 # "3.10" must be in quotes so it's not interpreted as "3.1".
                 # See: https://dev.to/hugovk/the-python-3-1-problem-85g
@@ -15,16 +14,22 @@ jobs:
         runs-on: ${{ matrix.os }}
 
         steps:
-            - name: Check out code.
-              uses: actions/checkout@v2
+          - name: Check out code.
+            uses: actions/checkout@v2
 
-            - name: Set up Python ${{ matrix.python-version }}.
-              uses: actions/setup-python@v2
-              with:
-                  python-version: ${{ matrix.python-version }}
+          - name: Set up Python ${{ matrix.python-version }}.
+            uses: actions/setup-python@v2
+            with:
+                python-version: ${{ matrix.python-version }}
 
-            - name: Build package.
-              run: python setup.py build
+          - name: Install dependencies.
+            run: pip install wheel
 
-            - name: Install package.
-              run: python setup.py install
+          - name: Build wheel.
+            run: pip wheel .
+
+          - name: Upload wheel.
+            uses: actions/upload-artifact@v2
+            with:
+              name: wheels
+              path: JPype1-*.whl
