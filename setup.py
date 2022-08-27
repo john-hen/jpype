@@ -23,9 +23,6 @@ from setuptools import setup
 from setuptools import Extension
 import glob
 
-if sys.version_info[0] < 3 and sys.version_info[1] < 5:
-    raise RuntimeError("JPype requires Python 3.5 or later")
-
 import setupext
 
 
@@ -40,8 +37,8 @@ jpypeLib = Extension(name='_jpype', **setupext.platform.Platform(
     include_dirs=[Path('native', 'common', 'include'),
                   Path('native', 'python', 'include'),
                   Path('native', 'embedded', 'include')],
-    sources=sorted(map(str, list(Path('native', 'common').glob('*.cpp'))+
-             list(Path('native', 'python').glob('*.cpp'))+
+    sources=sorted(map(str, list(Path('native', 'common').glob('*.cpp')) +
+             list(Path('native', 'python').glob('*.cpp')) +
              list(Path('native', 'embedded').glob('*.cpp')))), platform=platform,
 ))
 jpypeJar = Extension(name="org.jpype",
@@ -53,7 +50,7 @@ jpypeJar = Extension(name="org.jpype",
 
 setup(
     name='JPype1',
-    version='1.3.1_dev0',
+    version='1.4.1_dev0',
     description='A Python to Java bridge.',
     long_description=open('README.rst').read(),
     license='License :: OSI Approved :: Apache Software License',
@@ -61,6 +58,7 @@ setup(
     author_email='devilwolf@users.sourceforge.net',
     maintainer='Luis Nell',
     maintainer_email='cooperate@originell.org',
+    python_requires=">=3.7",
     url='https://github.com/jpype-project/jpype',
     platforms=[
         'Operating System :: Microsoft :: Windows',
@@ -70,10 +68,10 @@ setup(
     ],
     classifiers=[
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Topic :: Software Development',
         'Topic :: Scientific/Engineering',
     ],
