@@ -17,7 +17,6 @@
 # *****************************************************************************
 import _jpype
 import jpype
-import _jpype
 from jpype.types import *
 from jpype import java
 import common
@@ -292,7 +291,8 @@ class JClassTestCase(common.JPypeTestCase):
     def testDeprecated(self):
         # this one should issue a warning
         jo = JClass("java.lang.Object")
-        self.assertIsInstance(JObject(None, object), jo)
+        with self.assertWarns(DeprecationWarning):
+            self.assertIsInstance(JObject(None, object), jo)
 
     def testGetSetBad(self):
         JS = JClass("java.lang.String")
@@ -302,7 +302,7 @@ class JClassTestCase(common.JPypeTestCase):
         with self.assertRaises(TypeError):
             setattr(js, object(), 1)
 
-    def testGetSetBad(self):
+    def testGetSetBad_2(self):
         jo = JClass("java.lang.Object")()
         self.assertTrue(jo != JInt(0))
         self.assertFalse(jo == JInt(0))

@@ -1,12 +1,12 @@
 # This file is Public Domain and may be used without restrictions,
-# because noone should have to waste their lives typing this again.
-import _jpype
+# because nobody should have to waste their lives typing this again.
+import pytest
+
 import jpype
 from jpype.types import *
 from jpype import java
 import jpype.dbapi2 as dbapi2
 import common
-import time
 import datetime
 import decimal
 import threading
@@ -16,10 +16,17 @@ java = jpype.java
 try:
     import zlib
 except ImportError:
-    zlib = None
+    zlib = None  # type: ignore[assignment]
 
 
 db_name = "jdbc:h2:mem:testdb"
+
+def setUpModule(module):
+    from common import java_version
+    version = java_version()
+    if version[0] == 1 and version[1] == 8:
+        pytest.skip("jdk8 unsupported", allow_module_level=True)
+
 
 
 class ConnectTestCase(common.JPypeTestCase):
@@ -795,6 +802,7 @@ class CursorTestCase(common.JPypeTestCase):
                 cu.execute("insert into booze(name,price) values(?,?)", object())
 
 
+@common.unittest.skipUnless(zlib, "requires zlib")
 class AdapterTestCase(common.JPypeTestCase):
     def setUp(self):
         common.JPypeTestCase.setUp(self)
@@ -907,6 +915,7 @@ class ConverterTestCase(common.JPypeTestCase):
                 f = cu.fetchone(types=[])
 
 
+@common.unittest.skipUnless(zlib, "requires zlib")
 class GettersTestCase(common.JPypeTestCase):
     def setUp(self):
         common.JPypeTestCase.setUp(self)

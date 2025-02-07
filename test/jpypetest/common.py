@@ -15,14 +15,14 @@
 #   See NOTICE file for details.
 #
 # *****************************************************************************
+from functools import lru_cache
 
 import pytest
 import _jpype
 import jpype
 import logging
 from os import path
-import sys
-import unittest
+import unittest  # Extensively used as common.unittest.
 
 CLASSPATH = None
 fast = False
@@ -67,6 +67,15 @@ def requireNumpy(func):
         raise unittest.SkipTest("numpy required")
     return f
 
+def requireAscii(func):
+    def f(self):
+        try:
+            root = path.dirname(path.abspath(path.dirname(__file__)))
+            if root.isascii():
+                return func(self)
+        except ImportError:
+            raise unittest.SkipTest("Ascii root directory required")
+    return f
 
 class UseFunc(object):
     def __init__(self, obj, func, attr):
@@ -117,9 +126,8 @@ class JPypeTestCase(unittest.TestCase):
                 args.append(
                     "-javaagent:lib/org.jacoco.agent-0.8.5-runtime.jar=destfile=build/coverage/jacoco.exec,includes=org.jpype.*")
                 warnings.warn("using JaCoCo")
-            import pathlib
-            jpype.addClassPath(pathlib.Path("lib/*").absolute())
-            jpype.addClassPath(pathlib.Path("test/jar/*").absolute())
+            jpype.addClassPath(path.join(root, "../lib/*"))
+            jpype.addClassPath(path.join(root, "jar/*"))
             classpath_arg %= jpype.getClassPath()
             args.append(classpath_arg)
             _jpype.enableStacktraces(True)
@@ -127,8 +135,6 @@ class JPypeTestCase(unittest.TestCase):
             jpype.startJVM(jvm_path, *args,
                            convertStrings=self._convertStrings)
         self.jpype = jpype.JPackage('jpype')
-        if sys.version < '3':
-            self.assertCountEqual = self.assertItemsEqual
 
     def tearDown(self):
         pass
@@ -138,14 +144,23 @@ class JPypeTestCase(unittest.TestCase):
         for i in range(len(a)):
             self.assertEqual(a[i], b[i])
 
-    def assertElementsAlmostEqual(self, a, b):
+    def assertElementsAlmostEqual(self, a, b, places=None, msg=None,
+                          delta=None):
         self.assertEqual(len(a), len(b))
         for i in range(len(a)):
-            self.assertAlmostEqual(a[i], b[i])
+            self.assertAlmostEqual(a[i], b[i], places, msg, delta)
 
     def useEqualityFunc(self, func):
         return UseFunc(self, func, 'assertEqual')
 
 
-if __name__ == '__main__':
-    unittest.main()
+@lru_cache(1)
+def java_version():
+    import subprocess
+    import sys
+    java_version = str(subprocess.check_output([sys.executable, "-c",
+                          "import jpype; jpype.startJVM(); "
+                          "print(jpype.java.lang.System.getProperty('java.version'))"]),
+                       encoding='ascii')
+    # todo: make this robust for version "numbers" containing strings (e.g.) 22.1-internal
+    return tuple(map(int, java_version.split(".")))

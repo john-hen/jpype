@@ -16,7 +16,7 @@ java = jpype.java
 try:
     import zlib
 except ImportError:
-    zlib = None
+    zlib = None  # type: ignore[assignment]
 
 
 db_name = "jdbc:hsqldb:mem:myDb"
@@ -24,6 +24,15 @@ db_name = "jdbc:hsqldb:mem:myDb"
 #first = "jdbc:derby:memory:myDb;create=True"
 
 
+def setUpModule(module):
+    from common import java_version
+    import pytest
+    version = java_version()
+    if version[0] == 1 and version[1] == 8:
+        pytest.skip("jdk8 unsupported", allow_module_level=True)
+
+
+@common.unittest.skipUnless(zlib, "requires zlib")
 class ConnectTestCase(common.JPypeTestCase):
     def setUp(self):
         common.JPypeTestCase.setUp(self)
@@ -793,6 +802,7 @@ class CursorTestCase(common.JPypeTestCase):
                 cu.execute("insert into booze(name,price) values(?,?)", object())
 
 
+@common.unittest.skipUnless(zlib, "requires zlib")
 class AdapterTestCase(common.JPypeTestCase):
     def setUp(self):
         common.JPypeTestCase.setUp(self)
@@ -905,6 +915,7 @@ class ConverterTestCase(common.JPypeTestCase):
                 f = cu.fetchone(types=[])
 
 
+@common.unittest.skipUnless(zlib, "requires zlib")
 class GettersTestCase(common.JPypeTestCase):
     def setUp(self):
         common.JPypeTestCase.setUp(self)
@@ -921,7 +932,7 @@ class GettersTestCase(common.JPypeTestCase):
                 pass
 
 
-@common.unittest.skip
+@common.unittest.skip  # type: ignore
 class TransactionsTestCase(common.JPypeTestCase):
     def setUp(self):
         common.JPypeTestCase.setUp(self)

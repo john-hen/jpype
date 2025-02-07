@@ -16,25 +16,25 @@
 #include "jpype.h"
 #include "pyjp.h"
 #include "jp_typemanager.h"
-#include "jp_boxedtype.h"
 #include "jp_stringtype.h"
 #include "jp_classloader.h"
-#include "jp_voidtype.h"
-#include "jp_booleantype.h"
-#include "jp_bytetype.h"
-#include "jp_chartype.h"
-#include "jp_shorttype.h"
-#include "jp_inttype.h"
-#include "jp_longtype.h"
-#include "jp_floattype.h"
-#include "jp_doubletype.h"
 #include "jp_proxy.h"
 #include "jp_platform.h"
 #include "jp_gc.h"
 
-JPResource::~JPResource()
-{
-}
+#ifdef WIN32
+#include <Windows.h>
+#else
+#if defined(_HPUX) && !defined(_IA64)
+#include <dl.h>
+#else
+#include <dlfcn.h>
+#endif // HPUX
+#include <errno.h>
+#endif
+
+
+JPResource::~JPResource() = default;
 
 
 #define USE_JNI_VERSION JNI_VERSION_1_4
@@ -46,60 +46,6 @@ void JPRef_failed()
 
 JPContext::JPContext()
 {
-	m_JavaVM = 0;
-	_void = 0;
-	_byte = 0;
-	_boolean = 0;
-	_char = 0;
-	_short = 0;
-	_int = 0;
-	_long = 0;
-	_float = 0;
-	_double = 0;
-
-	_java_lang_Void = 0;
-	_java_lang_Boolean = 0;
-	_java_lang_Byte = 0;
-	_java_lang_Character = 0;
-	_java_lang_Short = 0;
-	_java_lang_Integer = 0;
-	_java_lang_Long = 0;
-	_java_lang_Float = 0;
-	_java_lang_Double = 0;
-
-	_java_lang_Object = 0;
-	_java_lang_Class = 0;
-	_java_lang_String = 0;
-
-	_java_lang_reflect_Method = 0;
-	_java_lang_reflect_Field = 0;
-	_java_nio_ByteBuffer = 0;
-
-	m_TypeManager = 0;
-	m_ClassLoader = 0;
-
-	m_Object_ToStringID = 0;
-	m_Object_EqualsID = 0;
-	m_Running = false;
-
-	// Java Functions
-	m_Object_ToStringID = NULL;
-	m_Object_EqualsID = NULL;
-	m_Object_HashCodeID = NULL;
-	m_CallMethodID = NULL;
-	m_Class_GetNameID = NULL;
-	m_Context_collectRectangularID = NULL;
-	m_Context_assembleID = NULL;
-	m_String_ToCharArrayID = NULL;
-	m_Context_CreateExceptionID = NULL;
-	m_Context_GetExcClassID = NULL;
-	m_Context_GetExcValueID = NULL;
-	m_CompareToID = NULL;
-	m_Buffer_IsReadOnlyID = NULL;
-	m_Context_OrderID = NULL;
-	m_Object_GetClassID = NULL;
-	m_Throwable_GetCauseID = NULL;
-	m_Context_GetStackFrameID = NULL;
 	m_Embedded = false;
 
 	m_GC = new JPGarbageCollection(this);
@@ -113,7 +59,7 @@ JPContext::~JPContext()
 
 bool JPContext::isRunning()
 {
-	if (m_JavaVM == NULL || !m_Running)
+	if (m_JavaVM == nullptr || !m_Running)
 	{
 		return false;
 	}
@@ -125,14 +71,14 @@ bool JPContext::isRunning()
  */
 void assertJVMRunning(JPContext* context, const JPStackInfo& info)
 {
-	if (_JVMNotRunning == NULL)
+	if (_JVMNotRunning == nullptr)
 	{
 		_JVMNotRunning = PyObject_GetAttrString(PyJPModule, "JVMNotRunning");
 		JP_PY_CHECK();
 		Py_INCREF(_JVMNotRunning);
 	}
 
-	if (context == NULL)
+	if (context == nullptr)
 	{
 		throw JPypeException(JPError::_python_exc, _JVMNotRunning, "Java Context is null", info);
 	}
@@ -169,14 +115,14 @@ void JPContext::startJVM(const string& vmPath, const StringVector& args,
 		loadEntryPoints(vmPath);
 	} catch (JPypeException& ex)
 	{
-		ex.getMessage();
+		(void) ex;
 		throw;
 	}
 
 	// Pack the arguments
 	JP_TRACE("Pack arguments");
 	JavaVMInitArgs jniArgs;
-	jniArgs.options = NULL;
+	jniArgs.options = nullptr;
 
 	// prepare this ...
 	jniArgs.version = USE_JNI_VERSION;
@@ -194,7 +140,7 @@ void JPContext::startJVM(const string& vmPath, const StringVector& args,
 	}
 
 	// Launch the JVM
-	JNIEnv* env = NULL;
+	JNIEnv* env = nullptr;
 	JP_TRACE("Create JVM");
 	try
 	{
@@ -206,7 +152,7 @@ void JPContext::startJVM(const string& vmPath, const StringVector& args,
 	JP_TRACE("JVM created");
 	delete [] jniArgs.options;
 
-	if (m_JavaVM == NULL)
+	if (m_JavaVM == nullptr)
 	{
 		JP_TRACE("Unable to start");
 		JP_RAISE(PyExc_RuntimeError, "Unable to start JVM");
@@ -223,6 +169,36 @@ void JPContext::attachJVM(JNIEnv* env)
 	m_Embedded = true;
 #endif
 	initializeResources(env, false);
+}
+
+std::string getShared() 
+{
+#ifdef WIN32
+	// Windows specific
+	char path[MAX_PATH];
+	HMODULE hm = NULL;
+	if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | 
+		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+		(LPCSTR) &getShared, &hm) != 0 &&
+		GetModuleFileName(hm, path, sizeof(path)) != 0)
+	{
+		// This is needed when there is no-ascii characters in path
+		char shortPathBuffer[MAX_PATH];
+		long len = GetShortPathName(path, shortPathBuffer, MAX_PATH);
+		if (len != 0)
+			return std::string(shortPathBuffer);
+	}
+#else
+	// Linux specific
+	Dl_info info;
+	if (dladdr((void*)getShared, &info))
+		return info.dli_fname;
+#endif
+	// Generic
+	JPPyObject import = JPPyObject::use(PyImport_AddModule("importlib.util"));
+	JPPyObject jpype = JPPyObject::call(PyObject_CallMethod(import.get(), "find_spec", "s", "_jpype"));
+	JPPyObject origin = JPPyObject::call(PyObject_GetAttrString(jpype.get(), "origin"));
+	return JPPyString::asStringUTF8(origin.get());
 }
 
 void JPContext::initializeResources(JNIEnv* env, bool interrupt)
@@ -247,7 +223,6 @@ void JPContext::initializeResources(JNIEnv* env, bool interrupt)
 	m_Object_HashCodeID = frame.GetMethodID(objectClass, "hashCode", "()I");
 	m_Object_GetClassID = frame.GetMethodID(objectClass, "getClass", "()Ljava/lang/Class;");
 
-	m_NoSuchMethodError = JPClassRef(frame, (jclass) frame.FindClass("java/lang/NoSuchMethodError"));
 	m_RuntimeException = JPClassRef(frame, (jclass) frame.FindClass("java/lang/RuntimeException"));
 
 	jclass stringClass = frame.FindClass("java/lang/String");
@@ -277,20 +252,20 @@ void JPContext::initializeResources(JNIEnv* env, bool interrupt)
 	jvalue val[4];
 	val[0].j = (jlong) this;
 	val[1].l = m_ClassLoader->getBootLoader();
-	val[2].l = 0;
+	val[2].l = nullptr;
 	val[3].z = interrupt;
 
 	if (!m_Embedded)
 	{
-		JPPyObject import = JPPyObject::call(PyImport_AddModule("importlib.util"));
-		JPPyObject jpype = JPPyObject::call(PyObject_CallMethod(import.get(), "find_spec", "s", "_jpype"));
-		JPPyObject origin = JPPyObject::call(PyObject_GetAttrString(jpype.get(), "origin"));
-		val[2].l = frame.fromStringUTF8(JPPyString::asStringUTF8(origin.get()));
-		import.incref();  // The documentation specifies that PyImport_AddModule must return a 
-	                  // new reference, but that is not happening in Python 3.10
-	                  // so we are triggering a gc assertion failure.  To prevent
-	                  // the failure manually up the reference counter here.
+		std::string shared = getShared();
+		val[2].l = frame.fromStringUTF8(shared);
 	}
+
+	// Required before launch
+	m_Context_GetFunctionalID = frame.GetStaticMethodID(contextClass,
+			"getFunctional",
+			"(Ljava/lang/Class;)Ljava/lang/String;");
+
 	m_JavaContext = JPObjectRef(frame, frame.CallStaticObjectMethodA(contextClass, startMethod, val));
 
 	// Post launch
@@ -299,11 +274,14 @@ void JPContext::initializeResources(JNIEnv* env, bool interrupt)
 	jmethodID getTypeManager = frame.GetMethodID(contextClass, "getTypeManager",
 			"()Lorg/jpype/manager/TypeManager;");
 	m_TypeManager->m_JavaTypeManager = JPObjectRef(frame,
-			frame.CallObjectMethodA(m_JavaContext.get(), getTypeManager, 0));
+			frame.CallObjectMethodA(m_JavaContext.get(), getTypeManager, nullptr));
 
 	// Set up methods after everything is start so we get better error
 	// messages
-	m_CallMethodID = frame.GetMethodID(contextClass, "callMethod",
+	jclass reflectorClass = frame.FindClass("org/jpype/JPypeReflector");
+	jfieldID reflectorField = frame.GetFieldID(contextClass, "reflector", "Lorg/jpype/JPypeReflector;");
+	m_Reflector = JPObjectRef(frame, frame.GetObjectField(m_JavaContext.get(), reflectorField));
+	m_CallMethodID = frame.GetMethodID(reflectorClass, "callMethod",
 			"(Ljava/lang/reflect/Method;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;");
 	m_Context_collectRectangularID = frame.GetMethodID(contextClass,
 			"collectRectangular",
@@ -312,10 +290,6 @@ void JPContext::initializeResources(JNIEnv* env, bool interrupt)
 	m_Context_assembleID = frame.GetMethodID(contextClass,
 			"assemble",
 			"([ILjava/lang/Object;)Ljava/lang/Object;");
-
-	m_Context_GetFunctionalID = frame.GetMethodID(contextClass,
-			"getFunctional",
-			"(Ljava/lang/Class;)Ljava/lang/String;");
 
 	m_Context_CreateExceptionID = frame.GetMethodID(contextClass, "createException",
 			"(JJ)Ljava/lang/Exception;");
@@ -376,7 +350,7 @@ void JPContext::onShutdown()
 void JPContext::shutdownJVM(bool destroyJVM, bool freeJVM)
 {
 	JP_TRACE_IN("JPContext::shutdown");
-	if (m_JavaVM == NULL)
+	if (m_JavaVM == nullptr)
 		JP_RAISE(PyExc_RuntimeError, "Attempt to shutdown without a live JVM");
 	//	if (m_Embedded)
 	//		JP_RAISE(PyExc_RuntimeError, "Cannot shutdown from embedded Python");
@@ -393,15 +367,14 @@ void JPContext::shutdownJVM(bool destroyJVM, bool freeJVM)
 	if (freeJVM)
 	{
 		JP_TRACE("Unload JVM");
-		m_JavaVM = NULL;
+		m_JavaVM = nullptr;
 		JPPlatformAdapter::getAdapter()->unloadLibrary();
 	}
 
 	JP_TRACE("Delete resources");
-	for (std::list<JPResource*>::iterator iter = m_Resources.begin();
-			iter != m_Resources.end(); ++iter)
+	for (auto & m_Resource : m_Resources)
 	{
-		delete *iter;
+		delete m_Resource;
 	}
 	m_Resources.clear();
 
@@ -412,7 +385,7 @@ void JPContext::ReleaseGlobalRef(jobject obj)
 {
 	JP_TRACE_IN("JPContext::ReleaseGlobalRef", obj);
 	// Check if the JVM is already shutdown
-	if (m_JavaVM == NULL)
+	if (m_JavaVM == nullptr)
 		return;
 
 	// Get the environment and release the resource if we can.
@@ -431,7 +404,7 @@ void JPContext::ReleaseGlobalRef(jobject obj)
 void JPContext::attachCurrentThread()
 {
 	JNIEnv* env;
-	jint res = m_JavaVM->functions->AttachCurrentThread(m_JavaVM, (void**) &env, NULL);
+	jint res = m_JavaVM->functions->AttachCurrentThread(m_JavaVM, (void**) &env, nullptr);
 	if (res != JNI_OK)
 		JP_RAISE(PyExc_RuntimeError, "Unable to attach to thread");
 }
@@ -439,7 +412,7 @@ void JPContext::attachCurrentThread()
 void JPContext::attachCurrentThreadAsDaemon()
 {
 	JNIEnv* env;
-	jint res = m_JavaVM->functions->AttachCurrentThreadAsDaemon(m_JavaVM, (void**) &env, NULL);
+	jint res = m_JavaVM->functions->AttachCurrentThreadAsDaemon(m_JavaVM, (void**) &env, nullptr);
 	if (res != JNI_OK)
 		JP_RAISE(PyExc_RuntimeError, "Unable to attach to thread as daemon");
 }
@@ -457,8 +430,8 @@ void JPContext::detachCurrentThread()
 
 JNIEnv* JPContext::getEnv()
 {
-	JNIEnv* env = NULL;
-	if (m_JavaVM == NULL)
+	JNIEnv* env = nullptr;
+	if (m_JavaVM == nullptr)
 	{
 		JP_RAISE(PyExc_RuntimeError, "JVM is null");
 	}
@@ -471,7 +444,7 @@ JNIEnv* JPContext::getEnv()
 	{
 		// We will attach as daemon so that the newly attached thread does
 		// not deadlock the shutdown.  The user can convert later if they want.
-		res = m_JavaVM->AttachCurrentThreadAsDaemon((void**) &env, NULL);
+		res = m_JavaVM->AttachCurrentThreadAsDaemon((void**) &env, nullptr);
 		if (res != JNI_OK)
 			JP_RAISE(PyExc_RuntimeError, "Unable to attach to local thread");
 	}

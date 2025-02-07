@@ -8,7 +8,7 @@ JPype User Guide
 JPype Introduction
 ******************
 JPype is a Python module to provide full access to Java from within Python.
-Unlike Jython, JPype does not achive this by re-implementing Python, but
+Unlike Jython, JPype does not achieve this by re-implementing Python, but
 instead by interfacing both virtual machines at the native level. This
 shared memory based approach achieves good computing performance, while
 providing the access to the entirety of CPython and Java libraries.
@@ -36,11 +36,11 @@ hard at work on your latest project but you just need to pip in the database
 driver for your customers database and you can call it a night.  Unfortunately,
 it appears that your customers database will not connect to the Python database
 API.  The whole thing is custom and the customer isn't going to supply you with
-a Python version.  They did sent you a Java driver for the database but fat
+a Python version.  They did send you a Java driver for the database but fat
 lot of good that will do for you.
 
 Stumbling through the internet you find a module that says it can natively
-load Java packages as Python modules.  Well, it worth a shot...
+load Java packages as Python modules.  Well, it's worth a shot...
 
 So first thing the guide says is that you need to install Java and set up
 a ``JAVA_HOME`` environment variable pointing to the JRE.  Then start the
@@ -111,7 +111,7 @@ project has suffered a nasty data structure problem in one of the threads.  You
 managed to capture the data structure in a serialized form but if you could just
 make graph and call a few functions this would be so much easier.  But  the
 interactive Java shell that you are using doesn't really have much in the way of
-visualization and your don't have time to write a whole graphing applet just to
+visualization and you don't have time to write a whole graphing applet just to
 display this dataset.
 
 So poking around on the internet you find that Python has exactly the
@@ -166,7 +166,7 @@ you can use the casting operators.
    print(type(d))  # prints double[]
 
 Great. Now you just need to figure out how to convert from a Java array into
-our something our visualization code can deal with.  As nothing indicates that
+something our visualization code can deal with.  As nothing indicates that
 you need to convert the array, you just copy out of the visualization tool
 example and watch what happens.
 
@@ -189,7 +189,7 @@ Laboratory.  (For the purpose of this exercise we will ignore the fact that
 Hawkins was shut down in 1984 and Java was created in 1995).  You have the test
 subject strapped in and you just need to start the experiment.  So you pull up
 Jupyter notebook your boss gave you and run through the cells.  You need to
-added some heart wave monitor to the list of graphed results.
+add some heart wave monitor to the list of graphed results.
 
 The relevant section of the API for the Experiment appears to be
 
@@ -268,7 +268,7 @@ in a window.  Job well done, so you set the runtime back to one hour.  Looks
 like you still have time to make the intern woodlands hike and forest picnic.
 Though you wonder if maybe next year you should sign up for another laboratory.
 Maybe next year, you will try to sign up for those orbital lasers the President
-was talking about in the March.  That sounds like real fun.
+was talking about back in March.  That sounds like real fun.
 
 (This advanced demonstration utilized the concept of Proxies_ and
 `Code completion`_)
@@ -305,9 +305,9 @@ design goals.
 - Favor clarity over performance.  This doesn't mean not trying to optimize
   paths, but just as premature optimization is the bane of programmers,
   requiring writing to maximize speed is a poor long term choice, especially
-  in a language such as Python were weak typing can promote bit rot.
+  in a language such as Python where weak typing can promote bit rot.
 
-- If a new method has to be introduced, make look familiar.
+- If a new method has to be introduced, make it look familiar.
   Java programmers look to a method named "of" to convert to a type on
   factories such as a Stream, thus ``JArray.of`` converts a Python NumPy array
   to Java.  Python programmers expect that memory backed objects can be converted
@@ -330,7 +330,7 @@ in Python.  However, the Java Virtual Machine (JVM) is used for many popular
 languages such a Kotlin and Scala.  As such JPype can be used for any language
 which used the JVM.
 
-That said each language has its own special properties that tend to be
+That said, each language has its own special properties that tend to be
 represented in different ways.  If you would like JPype fully to operate on your
 particular language the following is required.
 
@@ -382,7 +382,7 @@ costs to share data structures between Java and Python and potentially much
 higher level of integration.  Noted downsides of Jython are that it has lagged
 well behind the state of the art in Python; it has a limited selection of
 modules that can be used; and the Python object thrashing is not particularly
-well fit in Java virtual machine leading to some known performance issues.
+well suited for the Java virtual machine, leading to some known performance issues.
 
 `Py4J <https://py4j.org/>`_
 ---------------------------
@@ -546,7 +546,7 @@ JPype Concepts
 ***************
 
 At its heart, JPype is about providing a bridge to use Java within Python.
-Depending on your prospective that can either be a means of accessing Java
+Depending on your perspective that can either be a means of accessing Java
 libraries from within Python or a way to use Java using Python syntax for
 interactivity and visualization.  This mean not only exposing a limited API but
 instead trying to provide the entirety of the Java language with Python.
@@ -708,8 +708,8 @@ Java conversions
 ----------------
 
 A conversion is a permitted change from an object of one type to another.
-Conversions have three different degrees.  These are: exact, implicit, and
-explicit.
+Conversions have three different degrees.  These are: exact, derived, implicit,
+and explicit.
 
 Exact conversions are those in which the type of an object is identical.  In
 Java each class has only one definition thus there is no need for an exact
@@ -718,21 +718,30 @@ identical for which exact conversion rules apply.  For example, a Java string
 and a Python string both bind equally well to a method which requires a string,
 thus this is an exact conversion for the purposes of bind types.
 
+The next level of conversion is derived.  A derived class is one which is a
+descends from a required type.  It is better that implicit but worse than
+exact.  If all of the types in a method match are exact or derived then it will
+override a method in which one argument is implicit.
+
 The next level of conversion is implicit.  An implicit conversion is one that
-Java would perform automatically.  For example converting a derived class to is
-base class when setting a field would be an implicit conversion.  Java defines
-a number of other conversions such as converting a primitive to a boxed type
-or from a boxed type back to a primitive as implicit conversions..
+Java would perform automatically.  Java defines a number of other conversions
+such as converting a primitive to a boxed type or from a boxed type back to a
+primitive as implicit conversions.  Python conversions defined by the user are
+also considered to be implicit.
 
 Of course not every cast is safe to perform.  For example, converting an object
 whose type is currently viewed as a base type to a derived type is not
 performed automatically nor is converting from one boxed type to another.  For
 those operations the conversion must be explicitly requested, hence these are
-explicit conversions.  To request an explicit conversion an object must be
-"cast" using a cast operator.  In Java, a cast is requested by placing the type
-name in parentheses in front of the object to be cast.  Unfortunately, the same
-syntax is not allowed in Python.  Not every conversion is possible between Java
-types.  Types that cannot be converted are considerer to be conversion type "none".
+explicit conversions.   In Java, a cast is requested by placing the type name
+in parentheses in front of the object to be cast.  Python does not directly
+support Java casting syntax. To request an explicit conversion an object must
+be "cast" using a cast operator @.   Overloaded methods with an explicit
+argument will not be matched.  After applying an explicit cast, the match
+quality can improve to exact or derived depending on the cast type. 
+
+Not every conversion is possible between Java types.  Types that cannot be
+converted are considerer to be conversion type "none".
 
 Details on the standard conversions provided by JPype are given in the section
 `Type Matching`_.
@@ -2170,7 +2179,7 @@ NumPy arrays, and conversion of NumPy integer types to Java boxed types.
 Transfers to Java
 =================
 
-Memory from a NumPy array can be transferred Java in bulk.  The transfer of
+Memory from a NumPy array can be transferred to Java in bulk.  The transfer of
 a one dimensional NumPy array to Java can either be done at initialization
 or by use of the Python slice operator.
 
@@ -2262,7 +2271,7 @@ all buffers become invalid and any access to NumPy arrays backed by Java
 risk crashing.  To avoid this fate, either create the memory for the buffer from
 within Python and pass it to Java.  Or use the Java ``java.lang.Runtime.exit``
 which will terminate both the Java and Python process without leaving any
-opertunity to access a dangling buffer.
+opportunity to access a dangling buffer.
 
 Buffer backed memory is not limited to use with NumPy.  Buffer transfers are
 supported to provide shared memory between processes or memory mapped files.
@@ -2273,7 +2282,7 @@ NumPy Primitives
 ================
 
 When converting a Python type to a boxed Java type, there is the difficulty
-that Java has no way to known the size of a Python numerical value.  But when
+that Java has no way to know the size of a Python numerical value.  But when
 converting NumPy numerical types, this is not an issue.  The following
 conversions apply to NumPy primitive types.
 
